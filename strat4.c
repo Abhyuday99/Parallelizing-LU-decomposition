@@ -16,49 +16,49 @@ void crout(double const **A, double **L, double **U, int n) {
 	
 	int comm_size ; 
 	int my_rank ; 
-
+	int start,end, block_size ; 
 	MPI_Init(NULL,NULL) ; 
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_size) ; 
 	MPI_Comm_rank(MPI_COMM_WORLD,&my_rank) ; 
 
 	for (j = 0; j < n; j++) {
 
-		for (i = j ; i < n; i++) {
-
-			if(i % comm_size == my_rank){
-				sum = 0;
-				for (k = 0; k < j; k++) {
-					sum = sum + L[i][k] * U[k][j];	
-				}
-				L[i][j] = A[i][j] - sum;
-				
+		block_size = (n-j)/comm_size ; 
+		if((n-j) % comm_size){
+			block_size += 1 ; 
+		}
+		start = j + my_rank*block_size ;
+		end = start + block_size ; 
+		if(end > n){
+			end = n ;
+		} 
+		for (i = start ; i < end; i++) {
+			sum = 0;
+			for (k = 0; k < j; k++) {
+				sum = sum + L[i][k] * U[k][j];	
 			}
-			
-			 
+			L[i][j] = A[i][j] - sum;
 		}
 
 		for(i = j ; i < n ; i++){
-			MPI_Bcast((L[i] + j),1,MPI_DOUBLE,i % comm_size,MPI_COMM_WORLD) ;
+			MPI_Bcast((L[i] + j),1,MPI_DOUBLE,(i - j) / block_size,MPI_COMM_WORLD) ;
 			
 		}
 		
-		for (i = j ; i < n; i++) {
-			if(i % comm_size == my_rank){
-				sum = 0;
-				for(k = 0; k < j; k++) {
-					sum = sum + L[j][k] * U[k][i];
-				}
-				if (L[j][j] == 0) {				
-					exit(0);
-				}
-				U[j][i] = (A[j][i] - sum) / L[j][j];
-
+		for (i = start ; i < end; i++) {
+			sum = 0;
+			for(k = 0; k < j; k++) {
+				sum = sum + L[j][k] * U[k][i];
 			}
+			if (L[j][j] == 0) {				
+				exit(0);
+			}
+			U[j][i] = (A[j][i] - sum) / L[j][j];
 		}
 
 		for(i = j ; i < n ; i++){
 			
-			MPI_Bcast((U[j] + i),1,MPI_DOUBLE,i % comm_size,MPI_COMM_WORLD) ;
+			MPI_Bcast((U[j] + i),1,MPI_DOUBLE,(i - j) / block_size,MPI_COMM_WORLD) ;
 		}
 	}
 
