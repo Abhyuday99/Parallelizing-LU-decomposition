@@ -5,12 +5,12 @@
 void crout(double const **A, double **L, double **U, int n) {
 	int i, j, k;
 	double sum = 0;
-	printf("TESTING\n") ; 
+	//printf("TESTING\n") ; 
 	for (i = 0; i < n; i++) {
-		printf("TESTING3\n") ; 
+		//printf("TESTING3\n") ; 
 		L[i][i] = 1;
 	}
-	printf("TESTING2\n") ; 
+	//printf("TESTING2\n") ; 
 	for (j = 0; j < n; j++) {
 		for (i = j; i < n; i++) {
 			sum = 0;

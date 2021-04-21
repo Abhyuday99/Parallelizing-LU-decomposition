@@ -1,35 +1,68 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <mpi.h>
+
+int thread_count = 2 ; 
+int batch_size = 0 ;
 
 void crout(double const **A, double **L, double **U, int n) {
 	int i, j, k;
 	double sum = 0;
-	printf("TESTING\n") ; 
+	
 	for (i = 0; i < n; i++) {
-		printf("TESTING3\n") ; 
 		L[i][i] = 1;
 	}
-	printf("TESTING2\n") ; 
+	
+	int comm_size ; 
+	int my_rank ; 
+
+	MPI_Init(NULL,NULL) ; 
+	MPI_Comm_size(MPI_COMM_WORLD, &comm_size) ; 
+	MPI_Comm_rank(MPI_COMM_WORLD,&my_rank) ; 
+
 	for (j = 0; j < n; j++) {
-		for (i = j; i < n; i++) {
-			sum = 0;
-			for (k = 0; k < j; k++) {
-				sum = sum + L[i][k] * U[k][j];	
+
+		for (i = j ; i < n; i++) {
+
+			if(i % comm_size == my_rank){
+				sum = 0;
+				for (k = 0; k < j; k++) {
+					sum = sum + L[i][k] * U[k][j];	
+				}
+				L[i][j] = A[i][j] - sum;
+				
 			}
-			L[i][j] = A[i][j] - sum;
+			
+			 
 		}
-		for (i = j; i < n; i++) {
-			sum = 0;
-			for(k = 0; k < j; k++) {
-				sum = sum + L[j][k] * U[k][i];
+
+		for(i = j ; i < n ; i++){
+			MPI_Bcast((L[i] + j),1,MPI_DOUBLE,i % comm_size,MPI_COMM_WORLD) ;
+			
+		}
+		
+		for (i = j ; i < n; i++) {
+			if(i % comm_size == my_rank){
+				sum = 0;
+				for(k = 0; k < j; k++) {
+					sum = sum + L[j][k] * U[k][i];
+				}
+				if (L[j][j] == 0) {				
+					exit(0);
+				}
+				U[j][i] = (A[j][i] - sum) / L[j][j];
+
 			}
-			if (L[j][j] == 0) {				
-				exit(0);
-			}
-			U[j][i] = (A[j][i] - sum) / L[j][j];
+		}
+
+		for(i = j ; i < n ; i++){
+			
+			MPI_Bcast((U[j] + i),1,MPI_DOUBLE,i % comm_size,MPI_COMM_WORLD) ;
 		}
 	}
+
+	MPI_Finalize() ; 
 }
 
 void write_output(char fname[], double** arr, int n ){
@@ -50,8 +83,14 @@ int main(int argc, char *argv[]){
 	
 	int n = atoi(argv[1]) ;
 	
-	int N = n*n;
+	
 	char* num_threads = (char*)malloc(sizeof(char)*(strlen(argv[3]) + 1) ); 
+	thread_count = atoi(argv[3]) ;
+
+	batch_size = n / thread_count ;
+	if(n % thread_count){
+		batch_size += 1 ; 
+	}
 
 	double **A = (double**)malloc(n*sizeof(double*)) ; 
 	double **L = (double**)malloc(n*sizeof(double*)) ; 
