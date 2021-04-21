@@ -15,5 +15,5 @@ then
 ./strat3 $1 $2 $3
 elif [ "$4" ==  "4" ]
 then
-./strat4 $1 $2 $3
+mpiexec -n $3 ./strat4 $1 $2 $3
 fi
