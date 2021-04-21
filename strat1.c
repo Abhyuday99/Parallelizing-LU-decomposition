@@ -2,16 +2,20 @@
 #include <string.h>
 #include <stdlib.h>
 
+int thread_count = 2;
+
 void crout(double const **A, double **L, double **U, int n) {
 	int i, j, k;
 	double sum = 0;
-	printf("TESTING\n") ; 
+	// printf("TESTING\n") ; 
+	#pragma omp parallel for
 	for (i = 0; i < n; i++) {
-		printf("TESTING3\n") ; 
+		// printf("TESTING3\n") ; 
 		L[i][i] = 1;
 	}
-	printf("TESTING2\n") ; 
+	// printf("TESTING2\n") ; 
 	for (j = 0; j < n; j++) {
+		#pragma omp parallel for private(sum, i, k) shared(j) num_threads(thread_count)
 		for (i = j; i < n; i++) {
 			sum = 0;
 			for (k = 0; k < j; k++) {
@@ -19,6 +23,8 @@ void crout(double const **A, double **L, double **U, int n) {
 			}
 			L[i][j] = A[i][j] - sum;
 		}
+
+		#pragma omp parallel for private(sum, i, k) shared(j) num_threads(thread_count)
 		for (i = j; i < n; i++) {
 			sum = 0;
 			for(k = 0; k < j; k++) {
@@ -52,6 +58,7 @@ int main(int argc, char *argv[]){
 	
 	int N = n*n;
 	char* num_threads = (char*)malloc(sizeof(char)*(strlen(argv[3]) + 1) ); 
+	thread_count = atoi(argv[3]) ;
 
 	double **A = (double**)malloc(n*sizeof(double*)) ; 
 	double **L = (double**)malloc(n*sizeof(double*)) ; 
